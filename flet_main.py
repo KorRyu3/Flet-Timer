@@ -3,79 +3,100 @@ from datetime import datetime
 from threading import Thread
 
 import flet as ft
-from flet import Page, Text, ElevatedButton, TextField, Row, Column, Container
+from flet import Page, Text, ElevatedButton, TextField, Row, Column, ProgressBar, Ref, AlertDialog
 from count_down_timer import CountDownTimer
 
-def main(page: Page):
+def main(page: Page) -> None:
+    # windowの設定
+    page.title = "Count Down Timer"
+    page.window_width = 400  # 幅
+    page.window_height = 400  # 高さ
+    page.window_maximizable = False  # 最大化ボタン
+    page.window_resizable = False  # サイズ変更不可
+    page.on_error = lambda e: print("Page error:", e.data)  # エラー時の処理
+    page.window_center()
+    page.update()
+
 
     class FletTimer(CountDownTimer):
         """自作のタイマークラスをFletで使えるようにしたクラス"""
-        def _update_remaining_time(self):
+        def _update_remaining_time(self) -> None:
             minutes, seconds = self.get_remaining_time()
             if minutes < 10:
                 minutes = f"0{minutes}"
             if seconds < 10:
                 seconds = f"0{seconds}"
-            remaining_time.value = f"{minutes}:{seconds}"
-            remaining_time.update()
+            remaining_time.current.value = f"{minutes}:{seconds}"  # 00:00表記
+            remaining_time.current.update()
 
         def start(self, e) -> None:
             """タイマーのスタート"""
+            print("start")
             # any:""
-            if input_min.value != "" and input_sec.value == "":
-                input_sec.value = "0"
+            if input_min.current.value != "" and input_sec.current.value == "":
+                input_sec.current.value = "0"
             # "":any
-            if input_min.value == "" and input_sec.value != "":
-                input_min.value = "0"
-            # "": ""
-            if input_min.value == "" or input_sec.value == "":
-                error_message.value = "分と秒の両方を入力してください"
-                error_message.visible = True
-                error_message.update()
+            if input_min.current.value == "" and input_sec.current.value != "":
+                input_min.current.value = "0"
+            # "":""
+            if input_min.current.value == "" or input_sec.current.value == "":
+                self._set_error_message("分と秒の両方を入力してください")
                 return
-            # 0:0
-            if int(input_min.value) == 0 and int(input_sec.value) == 0:
-                error_message.value = "0分0秒は入力できません"
-                error_message.visible = True
-                error_message.update()
+            # 00:00
+            if int(input_min.current.value) == 0 and int(input_sec.current.value) == 0:
+                self._set_error_message("0分0秒は入力できません")
                 return
+            # 時間がセットされていなかったら
             if self.remaining_time == 0:
-                self.set_timer(int(input_min.value), int(input_sec.value))
-                user_input.visible = False
+                # 入力の判定
+                if int(input_min.current.value) > 59 or int(input_sec.current.value) > 59:
+                    self._set_error_message("60分, 60秒以上は入力できません")
+                    input_min.current.value = "0"
+                    input_sec.current.value = ""
+                    input_sec.current.focus()
+                    page.update()
+                    return
+                # タイマーをセット
+                self.set_timer(int(input_min.current.value), int(input_sec.current.value))
+                row_remaining_time.current.height = 160
+                user_input.current.visible = False
+
+            # タイマーがスタートしていなかったら
             if self.start_time is None:
-                start_btn.disabled = True
-                stop_btn.disabled = False
-                reset_btn.disabled = False
-                error_message.visible = False
+                # ボタンの入力を受け付けない
+                start_btn.current.disabled = True
+                stop_btn.current.disabled = False
+                reset_btn.current.disabled = False
+                # エラーメッセージを非表示
+                error_message.current.visible = False
                 self.start_time = datetime.now()
                 self.stop_event.clear()
                 self.thread: Thread = Thread(target=self._run)
                 self.thread.start()
             else:
-                error_message.value = "もう一度startボタンを押してください"
-                error_message.visible = True
+                self._set_error_message("もう一度startボタンを押してください")
 
-            end_time.visible = True
+            end_time.current.visible = True
+            # 終了時刻の更新
             for i, time in enumerate([end_hour, end_min, end_sec]):
-                time.value = str(self.get_estimated_time()[i])
-                if int(time.value) < 10:
-                    time.value = f"0{time.value}"
+                time.current.value = str(self.get_estimated_time()[i])
+                if int(time.current.value) < 10:
+                    # 00:00表記
+                    time.current.value = f"0{time.current.value}"
             page.update()
 
         def stop(self, e) -> None:
+            print("stop")
             if self.start_time is None:
-                error_message.value = "タイマーがスタートしていません"
-                error_message.visible = True
+                self._set_error_message("タイマーがスタートしていません")
             else:
-                start_btn.disabled = False
-                stop_btn.disabled = True
+                start_btn.current.disabled = False
+                stop_btn.current.disabled = True
             page.update()
             try:
                 super().stop(e)
             except TypeError:
-                error_message.value = "もう一度stopボタンを押してください"
-                error_message.visible = True
-                error_message.update()
+                self._set_error_message("もう一度stopボタンを押してください")
 
         def _run(self) -> None:
             """タイマーの動作を実行"""
@@ -84,8 +105,7 @@ def main(page: Page):
                 count = self.remaining_time
             while not self.stop_event.is_set():
                 self._update_remaining_time()
-                print(count)
-                if count == 0:
+                if count <= 0:
                     self.start_time = None
                     self._open_dlg()
                     break
@@ -94,123 +114,165 @@ def main(page: Page):
 
         def reset(self, e) -> None:
             self.stop(e)
+            print("reset")
             self.set_timer(minutes=0, seconds=0)
-            remaining_time.value = "00:00"
-            end_time.visible = False
-            user_input.visible = True
-            error_message.visible = False
+            remaining_time.current.value = "00:00"
+            end_time.current.visible = False
+            user_input.current.visible = True
+            error_message.current.visible = False
 
-            start_btn.disabled = False
-            stop_btn.disabled = True
-            reset_btn.disabled = True
+            start_btn.current.disabled = False
+            stop_btn.current.disabled = True
+            reset_btn.current.disabled = True
+
+            row_remaining_time.current.height = 140
             # update
             page.update()
 
-            input_sec.focus()
+            input_sec.current.focus()
 
         def _open_dlg(self):
-            page.dialog = end_dlg
-            end_dlg.open = True
+            page.dialog = ft.AlertDialog(ref=end_dlg, title=ft.Text("タイマーが終了しました。\nお疲れさまでした！", size=20), on_dismiss=timer.reset)
+            end_dlg.current.open = True
             page.update()
+
+        def _set_error_message(self, message):
+            error_message.current.value = message
+            error_message.current.visible = True
+            error_message.current.update()
 
     # Fletのメインプログラム---------------------------------------------------
 
     timer = FletTimer()
 
-    page.title = "Count Down Timer"
 
 
-    end_dlg = ft.AlertDialog(title=ft.Text("タイマーが終了しました。お疲れさまでした！", size=20), on_dismiss=timer.reset)
+    end_hour = Ref[Text]()
+    end_min = Ref[Text]()
+    end_sec = Ref[Text]()
+    end_time = Ref[Row]()
+    end_dlg = Ref[AlertDialog]()
 
-    end_hour = Text(value="00", size=20)
-    end_min = Text(value="00", size=20)
-    end_sec = Text(value="00", size=20)
-    end_time = Row(
-        controls=[
-            Text("終了時刻: ", size=20),
-            end_hour,
-            Text(":", size=20),
-            end_min,
-            Text(":", size=20),
-            end_sec,
-        ],
-        alignment=ft.MainAxisAlignment.CENTER
-    )
-    end_time.visible = False
+    remaining_time = Ref[Text]()
+    row_remaining_time = Ref[Row]()
 
-    remaining_time = Text(value="00:00", size=50)
+
+    btn_padding = 40
+    start_btn = Ref[ElevatedButton]()
+    stop_btn = Ref[ElevatedButton]()
+    reset_btn = Ref[ElevatedButton]()
+    count_down_btns = Ref[Row]()
 
     input_width = 75
-    input_height = 100
-    input_min = TextField(
-        label="分",
-        hint_text="0",
-        width=input_width,
-        height=input_height,
-        input_filter=ft.NumbersOnlyInputFilter(),
-        max_length=2,
-        on_submit=timer.start,
-    )
-    input_sec = TextField(
-        label="秒",
-        hint_text="0",
-        width=input_width,
-        height=input_height,
-        input_filter=ft.NumbersOnlyInputFilter(),
-        max_length=2,
-        on_submit=timer.start,
-        autofocus=True,
-    )
-    user_input = Row(
-        controls=[
-            Text("入力: ", size=20, width=input_width, height=75, text_align=ft.TextAlign.CENTER),
-            input_min,
-            Text(":", size=20, width=20, height=75, text_align=ft.TextAlign.CENTER),
-            input_sec,
-        ],
-        height=200,
-        alignment=ft.MainAxisAlignment.CENTER,
-        # 非表示
-        visible=True
-    )
+    input_height = 75
+    input_min = Ref[TextField]()
+    input_sec = Ref[TextField]()
+    user_input = Ref[Row]()
 
-    btn_padding = 50
-    start_btn = ElevatedButton("Start", on_click=timer.start, style=ft.ButtonStyle(
-        shape=ft.CircleBorder(), padding=btn_padding
-    ))
-    stop_btn = ElevatedButton("Stop", on_click=timer.stop, disabled=True, style=ft.ButtonStyle(
-        shape=ft.CircleBorder(), padding=btn_padding
-    ))
-    reset_btn = ElevatedButton("Reset", on_click=timer.reset, disabled=True, style=ft.ButtonStyle(
-        shape=ft.CircleBorder(), padding=btn_padding
-    ))
-    count_down_btns = Row(
-        controls=[
-            start_btn,
-            stop_btn,
-            reset_btn,
-        ],
-        alignment=ft.MainAxisAlignment.CENTER,
-    )
-
-    error_message = Text()
+    error_message = Ref[Text]()
 
 
-
+    # アプリの配置
     page.add(
-        end_time,
-        Row(
+        Column(
             controls=[
-                remaining_time
+                Row(
+                    ref=end_time,
+                    controls=[
+                        Text("終了時刻: ", size=20),
+                        Text(ref=end_hour, value="00", size=20),
+                        Text(":", size=20),
+                        Text(ref=end_min, value="00", size=20),
+                        Text(":", size=20),
+                        Text(ref=end_sec, value="00", size=20),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    visible = False,
+                    height=70,
+                ),
+                Row(
+                    ref=row_remaining_time,
+                    controls=[
+                        Text(ref=remaining_time, value="00:00", size=100)
+                    ],
+                    height=140,
+                    # 中央揃え
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
             ],
-            height=100,
-            # 中央揃え
-            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=0,
+            alignment=ft.MainAxisAlignment.END,
         ),
-        count_down_btns,
-        user_input,
-        error_message
+        Column(
+            controls=[
+                Row(
+                    ref=count_down_btns,
+                    controls=[
+                        ElevatedButton(
+                            ref=start_btn,
+                            text="Start",
+                            on_click=timer.start,
+                            style=ft.ButtonStyle(
+                                shape=ft.CircleBorder(), padding=btn_padding
+                            )
+                        ),
+                        ElevatedButton(
+                            ref=stop_btn,
+                            text="Stop",
+                            on_click=timer.stop,
+                            style=ft.ButtonStyle(
+                                shape=ft.CircleBorder(), padding=btn_padding
+                            ),
+                            disabled=True,
+                        ),
+                        ElevatedButton(
+                            ref=reset_btn,
+                            text="Reset",
+                            on_click=timer.reset,
+                            style=ft.ButtonStyle(
+                                shape=ft.CircleBorder(), padding=btn_padding
+                            ),
+                            disabled=True,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+                Row(
+                    ref=user_input,
+                    controls=[
+                        Text("入力: ", size=20, width=input_width, height=50, text_align=ft.TextAlign.CENTER),
+                        TextField(
+                            ref=input_min,
+                            label="分",
+                            hint_text="0",
+                            width=input_width,
+                            height=input_height,
+                            input_filter=ft.NumbersOnlyInputFilter(),
+                            on_submit=timer.start,
+                        ),
+                        Text(":", size=20, width=20, height=50, text_align=ft.TextAlign.CENTER),
+                        TextField(
+                            ref=input_sec,
+                            label="秒",
+                            hint_text="0",
+                            width=input_width,
+                            height=input_height,
+                            input_filter=ft.NumbersOnlyInputFilter(),
+                            on_submit=timer.start,
+                            autofocus=True,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    # 非表示
+                    visible=True
+                ),
+            ],
+            spacing=20,
+        ),
+        Text(ref=error_message, visible=False),
     )
+
+
 
 if __name__ == "__main__":
     ft.app(target=main)

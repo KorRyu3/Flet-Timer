@@ -26,7 +26,7 @@ class CountDownTimer:
         if self.start_time is not None:
             self.stop_event.set()
             self.thread.join()
-            self.remaining_time -= (datetime.now() - self.start_time).total_seconds()
+            self.remaining_time -= math.floor( (datetime.now() - self.start_time).total_seconds() )
             self.start_time = None
 
 
