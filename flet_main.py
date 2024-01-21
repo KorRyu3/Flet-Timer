@@ -1,10 +1,20 @@
 import time
 from datetime import datetime
 from threading import Thread
+from logging import getLogger, StreamHandler, Formatter
 
 import flet as ft
 from flet import Page, Text, ElevatedButton, TextField, Row, Column, ProgressBar, Ref, AlertDialog
 from count_down_timer import CountDownTimer
+
+# logの設定
+logger = getLogger(__name__)
+handler = StreamHandler()
+handler.setFormatter(Formatter("[%(levelname)s] %(asctime)s  %(message)s"))
+logger.setLevel("INFO")
+handler.setLevel("INFO")
+logger.addHandler(handler)
+
 
 def main(page: Page) -> None:
     # windowの設定
@@ -13,9 +23,13 @@ def main(page: Page) -> None:
     page.window_height = 400  # 高さ
     page.window_maximizable = False  # 最大化ボタン
     page.window_resizable = False  # サイズ変更不可
-    page.on_error = lambda e: print("Page error:", e.data)  # エラー時の処理
+    page.on_error = lambda e: logger.error(f"Page error: {e.data}")  # エラー時の処理
     page.window_center()
     page.update()
+    page.fonts = {
+        "NotoSansJP-Medium": "fonts/Noto_Sans_JP/NotoSansJP-Medium.ttf",
+        "IBMPlexSerif-SemiBold": "fonts/IBM_Plex_Serif/IBMPlexSerif-SemiBold.ttf",
+    }
 
 
     class FletTimer(CountDownTimer):
@@ -31,13 +45,14 @@ def main(page: Page) -> None:
 
         def start(self, e) -> None:
             """タイマーのスタート"""
-            print("start")
+            logger.info("start")
             # any:""
             if input_min.current.value != "" and input_sec.current.value == "":
                 input_sec.current.value = "0"
             # "":any
             if input_min.current.value == "" and input_sec.current.value != "":
                 input_min.current.value = "0"
+            page.update()
             # "":""
             if input_min.current.value == "" or input_sec.current.value == "":
                 self._set_error_message("分と秒の両方を入力してください")
@@ -75,6 +90,7 @@ def main(page: Page) -> None:
                 self.thread.start()
             else:
                 self._set_error_message("もう一度startボタンを押してください")
+                start_btn.current.focus()
 
             end_time.current.visible = True
             # 終了時刻の更新
@@ -86,7 +102,7 @@ def main(page: Page) -> None:
             page.update()
 
         def stop(self, e) -> None:
-            print("stop")
+            logger.info("stop")
             if self.start_time is None:
                 self._set_error_message("タイマーがスタートしていません")
             else:
@@ -97,6 +113,7 @@ def main(page: Page) -> None:
                 super().stop(e)
             except TypeError:
                 self._set_error_message("もう一度stopボタンを押してください")
+                start_btn.current.focus()
 
         def _run(self) -> None:
             """タイマーの動作を実行"""
@@ -114,9 +131,10 @@ def main(page: Page) -> None:
 
         def reset(self, e) -> None:
             self.stop(e)
-            print("reset")
+            logger.info("reset")
             self.set_timer(minutes=0, seconds=0)
             remaining_time.current.value = "00:00"
+
             end_time.current.visible = False
             user_input.current.visible = True
             error_message.current.visible = False
@@ -140,12 +158,15 @@ def main(page: Page) -> None:
             error_message.current.value = message
             error_message.current.visible = True
             error_message.current.update()
+            logger.error(message)
 
-    # Fletのメインプログラム---------------------------------------------------
+
+    # ----------------------Fletのメインプログラム-----------------------------
 
     timer = FletTimer()
 
-
+    common_font = "NotoSansJP-Medium"
+    num_font = "IBMPlexSerif-SemiBold"
 
     end_hour = Ref[Text]()
     end_min = Ref[Text]()
@@ -155,7 +176,6 @@ def main(page: Page) -> None:
 
     remaining_time = Ref[Text]()
     row_remaining_time = Ref[Row]()
-
 
     btn_padding = 40
     start_btn = Ref[ElevatedButton]()
@@ -179,21 +199,22 @@ def main(page: Page) -> None:
                 Row(
                     ref=end_time,
                     controls=[
-                        Text("終了時刻: ", size=20),
-                        Text(ref=end_hour, value="00", size=20),
-                        Text(":", size=20),
-                        Text(ref=end_min, value="00", size=20),
-                        Text(":", size=20),
-                        Text(ref=end_sec, value="00", size=20),
+                        Text("終了時刻: ", size=20, font_family=common_font),
+                        Text(ref=end_hour, value="00", size=20, font_family=common_font),
+                        Text(":", size=20, font_family=common_font),
+                        Text(ref=end_min, value="00", size=20, font_family=common_font),
+                        Text(":", size=20, font_family=common_font),
+                        Text(ref=end_sec, value="00", size=20, font_family=common_font),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     visible = False,
                     height=70,
+                    spacing=3,
                 ),
                 Row(
                     ref=row_remaining_time,
                     controls=[
-                        Text(ref=remaining_time, value="00:00", size=100)
+                        Text(ref=remaining_time, value="00:00", size=100, font_family=num_font),
                     ],
                     height=140,
                     # 中央揃え
@@ -214,7 +235,7 @@ def main(page: Page) -> None:
                             on_click=timer.start,
                             style=ft.ButtonStyle(
                                 shape=ft.CircleBorder(), padding=btn_padding
-                            )
+                            ),
                         ),
                         ElevatedButton(
                             ref=stop_btn,
@@ -240,7 +261,7 @@ def main(page: Page) -> None:
                 Row(
                     ref=user_input,
                     controls=[
-                        Text("入力: ", size=20, width=input_width, height=50, text_align=ft.TextAlign.CENTER),
+                        Text("入力: ", size=20, width=input_width, height=50, font_family=common_font, text_align=ft.TextAlign.CENTER),
                         TextField(
                             ref=input_min,
                             label="分",
@@ -250,7 +271,7 @@ def main(page: Page) -> None:
                             input_filter=ft.NumbersOnlyInputFilter(),
                             on_submit=timer.start,
                         ),
-                        Text(":", size=20, width=20, height=50, text_align=ft.TextAlign.CENTER),
+                        Text(":", size=20, width=20, height=50, font_family=common_font, text_align=ft.TextAlign.CENTER),
                         TextField(
                             ref=input_sec,
                             label="秒",
@@ -269,7 +290,7 @@ def main(page: Page) -> None:
             ],
             spacing=20,
         ),
-        Text(ref=error_message, visible=False),
+        Text(ref=error_message, visible=False, size=15, color=ft.colors.ERROR),
     )
 
 
