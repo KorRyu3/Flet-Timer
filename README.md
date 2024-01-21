@@ -3,7 +3,7 @@ Python GUI Application using Flet.
 It is a timer that counts down.
 
 ## Installation
-### Step0: clone this repository
+### Step0: Clone this repository
 ```bash
 $ git clone https://github.com/KorRyu3/Flet_Timer.git
 $ cd Flet_Timer
