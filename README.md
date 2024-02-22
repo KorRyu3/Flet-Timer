@@ -34,7 +34,7 @@ $ mise i
 
 ### Step4: Install Packages
 ```bash
-$ poetry install
+$ poetry install --no-root
 ```
 
 ## Usage
