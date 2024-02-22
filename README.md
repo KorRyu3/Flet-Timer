@@ -26,16 +26,16 @@ fpath+=~/.zfunc
 autoload -Uz compinit && compinit
 ```
 
+### Step3: Install Packages
+```bash
+$ poetry install --no-root
+```
 
-### Step3: Install Environment
+### Step4: Install Environment
 ```bash
 $ mise i
 ```
 
-### Step4: Install Packages
-```bash
-$ poetry install
-```
 
 ## Usage
 ### Step0: Run App
