@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "後期授業課題"
+name = "Flet_Timer"
 version = "0.1.0"
 description = ""
 authors = ["KorRyu3 <146335193+KorRyu3@users.noreply.github.com>"]
