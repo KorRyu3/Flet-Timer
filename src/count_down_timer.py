@@ -1,13 +1,15 @@
 # 設計: https://sizu.me/koromaru/posts/km8stwou1zss
 
-from threading import Thread, Event
-from datetime import datetime, timedelta
-from typing import Union, Tuple
-import time
 import math
+import time
+from datetime import datetime, timedelta
+from threading import Event, Thread
+from typing import Tuple, Union
+
 
 class CountDownTimer:
     """タイマークラス"""
+
     def __init__(self):
         self.start_time: Union[None, datetime] = None
         self.stop_event: Event = Event()
@@ -26,9 +28,10 @@ class CountDownTimer:
         if self.start_time is not None:
             self.stop_event.set()
             self.thread.join()
-            self.remaining_time -= math.floor( (datetime.now() - self.start_time).total_seconds() )
+            self.remaining_time -= math.floor(
+                (datetime.now() - self.start_time).total_seconds()
+            )
             self.start_time = None
-
 
     def _run(self) -> None:
         """タイマーの動作を実行"""
@@ -36,7 +39,9 @@ class CountDownTimer:
         if self.stop_event.is_set():
             count = self.remaining_time
         while not self.stop_event.is_set():
-            print(f'Elapsed Time: {self.get_remaining_time()[0]}:{self.get_remaining_time()[1]} seconds')
+            print(
+                f"Elapsed Time: {self.get_remaining_time()[0]}:{self.get_remaining_time()[1]} seconds"
+            )
             if count == 0:
                 self.start_time = None
                 break
@@ -80,10 +85,13 @@ class CountDownTimer:
             # raise ValueError('タイマーがスタートしていません')
             return 00, 00
         else:
-            time = math.ceil( self.remaining_time - (datetime.now() - self.start_time).total_seconds() )
+            time = math.ceil(
+                self.remaining_time - (datetime.now() - self.start_time).total_seconds()
+            )
             return divmod(time, 60)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     timer = CountDownTimer()
     timer.set_timer(0, 5)
     timer.start()

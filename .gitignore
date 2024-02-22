@@ -1,7 +1,12 @@
-.venv/
-
+# Byte-compiled / optimized / DLL files
 .DS_Store
 
-tutorial/
+# virtualenv
+.venv/
 
-__pycache__/
+# cache
+**/__pycache__/
+.mypy_cache/
+
+# Flet turtorial
+tutorial/
