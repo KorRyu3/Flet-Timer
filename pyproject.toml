@@ -4,10 +4,11 @@ version = "0.1.0"
 description = ""
 authors = ["KorRyu3 <146335193+KorRyu3@users.noreply.github.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
-python = "~3.11"
-flet = "^0.20.2"
+python = "3.11.7"
+flet = "^0.22.1"
 
 
 [tool.poetry.group.dev.dependencies]
